@@ -1,45 +1,61 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+using WebApplication1.Interface;
 using WebApplication1.Models;
 
 namespace WebApplication1.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly LibraryContext _context;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public HomeController(LibraryContext context)
+        public HomeController(IUnitOfWork unitOfWork)
         {
-            _context = context;
+            _unitOfWork = unitOfWork;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var books = _context.Books.Include(b => b.Author).ToList();
-            var authors = _context.Authors.ToList();
+            var authors = await _unitOfWork.Authors.GetAllAuthors();
+            var books = await _unitOfWork.Books.GetAllBooks();
 
-            var model = new LibraryViewModel
-            {
-                Books = books,
-                Authors = authors
-            };
+            var model = (authors, books);
 
             return View(model);
         }
 
-        [HttpPost]
-        public IActionResult AddBook(string title, string genre, int authorId)
+        public async Task<IActionResult> AuthorDetails(int id)
         {
-            var author = _context.Authors.FirstOrDefault(a => a.AuthorId == authorId);
+            var author = await _unitOfWork.Authors.GetAuthorById(id);
+
+            if (author == null)
+            {
+                return NotFound();
+            }
+
+            return View(author);
+        }
+
+        public async Task<IActionResult> BookDetails(int id)
+        {
+            var book = await _unitOfWork.Books.GetBookById(id);
+
+            if (book == null)
+            {
+                return NotFound();
+            }
+
+            return View(book);
+        }
+
+        public async Task<IActionResult> AddBook(string title, string genre, int authorId)
+        {
+            var author = await _unitOfWork.Authors.GetAuthorById(authorId);
+
             if (author != null)
             {
                 var newBook = new Book { Title = title, Genre = genre, Author = author };
-                _context.Books.Add(newBook);
-                _context.SaveChanges();
+                await _unitOfWork.Books.AddBook(newBook);
+                await _unitOfWork.SaveChangesAsync();
             }
 
             return RedirectToAction("Index");
@@ -49,40 +65,18 @@ namespace WebApplication1.Controllers
         public IActionResult AddAuthor(string name)
         {
             var newAuthor = new Author { Name = name };
-            _context.Authors.Add(newAuthor);
-            _context.SaveChanges();
+            _unitOfWork.Authors.AddAuthor(newAuthor);
+            _unitOfWork.SaveChangesAsync();
 
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ClearDatabase()
         {
-            try
-            {
-                await ClearLibrary(_context);
-                return RedirectToAction("Index");
-            }
-            catch (Exception ex)
-            {
-                return View("Error", new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-            }
-        }
+            await _unitOfWork.ClearAllDataAsync();
 
-        private async Task ClearLibrary(LibraryContext context)
-        {
-            foreach (var book in context.Books)
-            {
-                context.Books.Remove(book);
-            }
-
-            foreach (var author in context.Authors)
-            {
-                context.Authors.Remove(author);
-            }
-
-            await context.SaveChangesAsync();
+            return RedirectToAction("Index");
         }
     }
 }
