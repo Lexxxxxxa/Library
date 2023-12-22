@@ -1,0 +1,72 @@
+﻿@model LibraryViewModel
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Library</title>
+</head>
+<body>
+    <h1>Library</h1>
+
+    <h2>Books</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Genre</th>
+                <th>Author</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in Model.Books)
+            {
+                <tr>
+                    <td>@book.Title</td>
+                    <td>@book.Genre</td>
+                    <td>@book.Author.Name</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+
+    <form id="clearDatabaseForm" asp-controller="Home" asp-action="ClearDatabase" method="post">
+        <button type="button" onclick="confirmClear()">Clear DataBase</button>
+    </form>
+
+    <script>
+        function confirmClear() {
+            if (confirm("Are you sure you want to clean up the DataBase?")) {
+                document.getElementById("clearDatabaseForm").submit();
+            }
+        }
+    </script>
+
+    <h2>Add Book</h2>
+    <form asp-action="AddBook" method="post">
+        <label>Title: </label>
+        <input type="text" name="title" required />
+        <br />
+        <label>Genre: </label>
+        <input type="text" name="genre" required />
+        <br />
+        <label>Author: </label>
+        <select name="authorId" required>
+            @foreach (var author in Model.Authors)
+            {
+                <option value="@author.AuthorId">@author.Name</option>
+            }
+        </select>
+        <br />
+        <button type="submit">Add Book</button>
+    </form>
+
+    <h2>Add Author</h2>
+    <form asp-action="AddAuthor" method="post">
+        <label>Name: </label>
+        <input type="text" name="name" required />
+        <br />
+        <button type="submit">Add Author</button>
+    </form>
+</body>
+</html>
